@@ -1,0 +1,6 @@
+data/
+tags
+__pycache__/
+ModelNet10/
+ModelNet40/
+*.swp
