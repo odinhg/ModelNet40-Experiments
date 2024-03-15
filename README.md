@@ -31,7 +31,7 @@ In this case, there is no $k$ as we construct the graph directly on the centroid
 
 ### Set of Sets
 
-Here, we (uniformly, with replacement) sample $k$ points from each of the Voronoi cells $\mathop{\text{Vor}}(c)$ where $c\in C$. The collection of such subsamples are represented by tensors of shape `(m, k, 3)`.
+Here, we (uniformly, with replacement) sample $k$ points from each of the Voronoi cells $\text{Vor}(c)$ where $c\in C$. The collection of such subsamples are represented by tensors of shape `(m, k, 3)`.
 
 ### Graph of Sets
 
@@ -54,13 +54,14 @@ Given $p>0$, a point cloud $P$ and two points $c_1, c_2 \in C\subseteq P$, we co
 Given a point cloud $P$ and two points $c_1, c_2 \in C\subseteq P$, define the set 
 
 $$
-\mathop{\text{N}}^C_2(c_1, c_2)=\{p\in P\mid\text{ the two points in }C\text{ closest to }p\text{ is }c_1\text
+\text{N}^C_2(c_1, c_2)=\{p\in P\mid\text{ the two points in }C\text{ closest to }p\text{ is }c_1\text
 { and }c_2\}.
 $$
 
-We define the *edge-density function* $\mathop{\text{ED}}\colon C\times C\to[0,1]$ by
+We define the *edge-density function* $\text{ED}\colon C\times C\to[0,1]$ by
+
 $$
-\mathop{\text{ED}}(c_1, c_2) = \frac{|\mathop{\text{N}}^C_2(c_1, c_2)|}{|P|}.
+\text{ED}(c_1, c_2) = \frac{|\text{N}^C_2(c_1, c_2)|}{|P|}.
 $$
 
 The edge density value is higher for pair of points having many points as their closest neighbours.
