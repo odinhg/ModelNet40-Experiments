@@ -4,8 +4,10 @@ import fpsample
 import numpy as np
 import scipy.spatial
 from torch_geometric.utils import coalesce, to_undirected
+from torch_geometric.data import Data
 
 from time import time
+
 
 def subsample_indices(
     X: np.ndarray,
@@ -63,7 +65,9 @@ def compute_edge_density_feature(
     idx = np.argpartition(D, 2, axis=0)[:2]
     pairs, counts = np.unique(idx, axis=1, return_counts=True)
     count_dict = {tuple(pair): count for pair, count in zip(pairs.T, counts)}
-    edge_densities = np.array([count_dict.get(tuple(e), 0) for e in edge_index.numpy().T])
+    edge_densities = np.array(
+        [count_dict.get(tuple(e), 0) for e in edge_index.numpy().T]
+    )
     edge_weight = edge_densities / edge_densities.max()
     return torch.tensor(edge_weight, dtype=torch.float)
     # TODO: Find a better way to compute the edge density function
@@ -80,7 +84,6 @@ def compute_edge_density_feature(
 def sample_weighted_delaunay_graph(
     P: np.ndarray,
     m: int,
-    point_cloud_transforms: list[callable] | None = None,
     sample_method: str = "fps",
     replace: bool = False,
     use_edge_density: bool = True,
@@ -88,10 +91,6 @@ def sample_weighted_delaunay_graph(
     """
     Sample m points from P using farthest point sampling. Return node features (coordinates), edge index for the Delaunay graph, and distance and edge density edge features.
     """
-    # Apply transforms (if any)
-    if point_cloud_transforms:
-        for transform in point_cloud_transforms:
-            P = transform(P)
     # Sample centroids
     C_idx = subsample_indices(P, m, sample_method, replace)
     C = P[C_idx]
@@ -105,7 +104,41 @@ def sample_weighted_delaunay_graph(
         edge_attr = torch.stack([edge_distance_feature, edge_density_feature], dim=-1)
     else:
         edge_attr = edge_distance_feature.unsqueeze(-1)
-    
+
     x = torch.tensor(C, dtype=torch.float)
 
     return x, edge_index, edge_attr
+
+
+class BaseDataset(torch.utils.data.Dataset):
+    def __init__(
+        self,
+        point_clouds: np.ndarray,
+        labels: np.ndarray,
+        sample_method: str = "fps",
+        use_edge_density: bool = False,
+        point_cloud_transforms: list[callable] | None = None,
+    ):
+        assert len(point_clouds) == len(
+            labels
+        ), f"Number of samples ({len(self.X)}) must be equal to the number of labels ({len(self.y)})."
+        self.X = point_clouds
+        self.y = labels
+        self.length = len(self.y)
+        self.sample_method = sample_method
+        self.use_edge_density = use_edge_density
+        self.point_cloud_transforms = point_cloud_transforms
+
+    def __len__(self) -> int:
+        return self.length
+
+    def __getitem__(self, index: int) -> Data:
+        raise NotImplementedError
+
+    def apply_transforms(self, P: np.ndarray) -> np.ndarray:
+        if self.point_cloud_transforms:
+            for transform in self.point_cloud_transforms:
+                P = transform(P)
+        return P
+
+

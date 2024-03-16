@@ -1,3 +1,3 @@
-from data import *
-from transforms import *
-from misc import *
+from .transforms import *
+from .misc import *
+from .data import *
