@@ -32,7 +32,7 @@ def build_delaunay_graph(X: np.ndarray) -> torch.Tensor:
     Construct Delaunay graph from a point cloud X. Return edge indices.
     """
     triangulation = scipy.spatial.Delaunay(X, qhull_options="QJ")
-    faces = torch.from_numpy(triangulation.simplices).t().contiguous()
+    faces = torch.from_numpy(triangulation.simplices).t().contiguous().long()
     edge_index = torch.cat(
         [faces[:2], faces[::2], faces[::3], faces[1:3], faces[1::2], faces[2:4]], dim=1
     )  # 3-simplices to edges

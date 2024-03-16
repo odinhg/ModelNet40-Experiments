@@ -4,6 +4,7 @@ from torch_geometric.data import Data
 from torch_geometric.nn import Sequential
 from torch_geometric.nn.conv import GENConv
 from torch_geometric.nn.pool import global_mean_pool, global_max_pool
+from torch_geometric.nn.norm import BatchNorm
 
 
 class DelaunayGNN(nn.Module):
@@ -14,7 +15,7 @@ class DelaunayGNN(nn.Module):
         out_dim: int,
         n_layers: int,
         edge_dim: int,
-        global_pool: str = "mean",
+        global_pool: str = "max",
     ):
         super().__init__()
 
@@ -23,19 +24,21 @@ class DelaunayGNN(nn.Module):
 
         layers = [
             (
-                GENConv(in_dim, hidden_dim, edge_dim=edge_dim),
+                GENConv(in_dim, hidden_dim, aggr="max", num_layers=1, expansion=1, edge_dim=edge_dim),
                 "x, edge_index, edge_attr -> x",
             ),
             nn.ReLU(),
+            (BatchNorm(hidden_dim), "x -> x"),
         ]
 
         for _ in range(n_layers - 1):
             layers += [
                 (
-                    GENConv(hidden_dim, hidden_dim, edge_dim=edge_dim),
+                    GENConv(hidden_dim, hidden_dim, aggr="max", num_layers=1, expansion=1, edge_dim=edge_dim),
                     "x, edge_index, edge_attr -> x",
                 ),
                 nn.ReLU(),
+                (BatchNorm(hidden_dim), "x -> x"),
             ]
 
         if global_pool == "mean":

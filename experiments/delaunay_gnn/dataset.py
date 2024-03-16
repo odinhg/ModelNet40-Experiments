@@ -7,7 +7,7 @@ from torch_geometric.data import Data
 from ..data_utils import BaseDataset, sample_weighted_delaunay_graph
 
 
-class DelaunayGraphDataset(torch.utils.data.Dataset):
+class DelaunayGraphDataset(BaseDataset):
     def __init__(
         self,
         point_clouds: np.ndarray,

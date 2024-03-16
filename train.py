@@ -10,8 +10,8 @@ from utils.misc import get_number_of_parameters
 from utils.transforms import random_rotate_and_scale, standardize
 
 # Experiment config
-m = 512
-use_edge_density = False
+m = 1024 
+use_edge_density = False 
 dataset_filename = "data/ModelNet40_cloud.h5"
 val_size = 0.10
 train_transforms = [random_rotate_and_scale, standardize]
@@ -19,18 +19,20 @@ val_transforms = [standardize]
 validate_interval = 10
 validate_repeat = 5
 lr = 1e-3
-batch_size = 16
+batch_size = 16 
 epochs = 250
-num_workers = 8
+num_workers = 8 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+print(f"Using device: {device}")
 
 model = DelaunayGNN(
     in_dim=3,
-    hidden_dim=256,
+    hidden_dim=512,
     out_dim=40,
     n_layers=3,
     edge_dim=2 if use_edge_density else 1,
-)
+).to(device)
 
 print(f"# Trainable params: {get_number_of_parameters(model)}")
 
@@ -45,7 +47,7 @@ X_train, y_train, X_val, y_val, X_test, y_test, class_names = load_and_split_dat
 )
 
 train_dataset = DelaunayGraphDataset(
-    X_train, y_train, m=m, point_cloud_transforms=train_transforms
+    X_train, y_train, m=m, use_edge_density=use_edge_density, point_cloud_transforms=train_transforms
 )
 train_dl = DataLoader(
     train_dataset,
@@ -56,7 +58,7 @@ train_dl = DataLoader(
 )
 
 val_dataset = DelaunayGraphDataset(
-    X_train, y_train, m=m, point_cloud_transforms=train_transforms
+    X_train, y_train, m=m, use_edge_density=use_edge_density, point_cloud_transforms=train_transforms
 )
 val_dl = DataLoader(
     val_dataset,
