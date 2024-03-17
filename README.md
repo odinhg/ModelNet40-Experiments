@@ -5,8 +5,8 @@ Learning on point cloud data using set and graph neural networks.
 ## TODO
 
 ### Implement
-- [ ] Edge density function
-- [ ] Delaunay GNN
+- [x] Edge density function (Would be nice to optimize)
+- [x] Delaunay GNN (Using `GATv2Conv` layers)
 - [ ] Set of Sets
 - [ ] Graph of Sets
 - [ ] Graph of Graphs
