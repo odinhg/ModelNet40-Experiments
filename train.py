@@ -7,18 +7,18 @@ from experiments.delaunay_gnn import DelaunayGraphDataset, DelaunayGNN
 
 from utils.data import load_and_split_dataset
 from utils.misc import get_number_of_parameters
-from utils.transforms import random_rotate_and_scale, standardize
+from utils.transforms import random_rotate_and_scale, normalize
 
 # Experiment config
 m = 1024 
 use_edge_density = False 
 dataset_filename = "data/ModelNet40_cloud.h5"
 val_size = 0.10
-train_transforms = [random_rotate_and_scale, standardize]
-val_transforms = [standardize]
+train_transforms = [random_rotate_and_scale, normalize]
+val_transforms = [normalize]
 validate_interval = 10
 validate_repeat = 5
-lr = 1e-3
+lr = 1e-4
 batch_size = 16 
 epochs = 250
 num_workers = 8 
@@ -30,7 +30,7 @@ model = DelaunayGNN(
     in_dim=3,
     hidden_dim=512,
     out_dim=40,
-    n_layers=3,
+    n_layers=2,
     edge_dim=2 if use_edge_density else 1,
 ).to(device)
 
@@ -58,7 +58,7 @@ train_dl = DataLoader(
 )
 
 val_dataset = DelaunayGraphDataset(
-    X_train, y_train, m=m, use_edge_density=use_edge_density, point_cloud_transforms=train_transforms
+    X_val, y_val, m=m, use_edge_density=use_edge_density, point_cloud_transforms=train_transforms
 )
 val_dl = DataLoader(
     val_dataset,

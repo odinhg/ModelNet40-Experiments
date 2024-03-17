@@ -66,7 +66,10 @@ def compute_edge_density_feature(
     pairs, counts = np.unique(idx, axis=1, return_counts=True)
     count_dict = {tuple(pair): count for pair, count in zip(pairs.T, counts)}
     edge_densities = np.array(
-        [count_dict.get(tuple(e), 0) for e in edge_index.numpy().T]
+        [
+            count_dict.get(tuple(e), 0) + count_dict.get(tuple(np.flip(e)), 0)
+            for e in edge_index.numpy().T
+        ]
     )
     edge_weight = edge_densities / edge_densities.max()
     return torch.tensor(edge_weight, dtype=torch.float)
@@ -140,5 +143,3 @@ class BaseDataset(torch.utils.data.Dataset):
             for transform in self.point_cloud_transforms:
                 P = transform(P)
         return P
-
-
