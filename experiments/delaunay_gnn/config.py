@@ -7,7 +7,7 @@ model_constructor = DelaunayGNNModel
 dataset_constructor = DelaunayGNNDataset
 
 dataset_params = {
-        "m": [128, 256, 512, 1024, 2048], 
+        "m": [256, 512, 1024, 2048, 4096], 
         "k": [0], 
         "use_edge_density": [False],
         }

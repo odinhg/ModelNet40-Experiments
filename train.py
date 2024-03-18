@@ -25,7 +25,7 @@ epochs = 100
 num_workers = 8
 seed = 0
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
-data = load_dataset(dataset_filename)
+dataset_dict = load_dataset(dataset_filename)
 
 # Run experiments for all given combinations of hyper-parameters
 hyperparams = product(dataset_params["m"], dataset_params["k"], dataset_params["use_edge_density"])
@@ -38,7 +38,7 @@ for m, k, use_edge_density in hyperparams:
     np.random.seed(seed)
 
     train_dl, val_dl = create_dataloaders(
-        data=data,
+        data=dataset_dict,
         dataset_constructor=dataset_constructor,
         val_size=val_size,
         m=m,
