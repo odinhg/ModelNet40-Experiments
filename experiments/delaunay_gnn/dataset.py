@@ -7,16 +7,20 @@ from torch_geometric.data import Data
 from ..data_utils import BaseDataset, sample_weighted_delaunay_graph
 
 
-class DelaunayGraphDataset(BaseDataset):
+class DelaunayGNNDataset(BaseDataset):
     def __init__(
         self,
         point_clouds: np.ndarray,
         labels: np.ndarray,
         m: int,
+        k: int = 0,
         use_edge_density: bool = False,
         sample_method: str = "fps",
         point_cloud_transforms: list[callable] | None = None,
     ):
+        """
+        ModelNet classification dataset for Delaunay GNN.
+        """
         super().__init__(
             point_clouds,
             labels,

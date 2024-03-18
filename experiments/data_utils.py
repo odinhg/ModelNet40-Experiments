@@ -6,8 +6,6 @@ import scipy.spatial
 from torch_geometric.utils import coalesce, to_undirected
 from torch_geometric.data import Data
 
-from time import time
-
 
 def subsample_indices(
     X: np.ndarray,

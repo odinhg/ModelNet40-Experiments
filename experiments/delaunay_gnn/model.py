@@ -6,10 +6,10 @@ from torch_geometric.nn.conv import GATv2Conv
 from torch_geometric.nn.pool import global_mean_pool, global_max_pool
 from torch_geometric.nn.norm import BatchNorm
 
-from ..classifier import FCClassifier
+from ..layers import GraphConvBlock, FCClassifier
 
 
-class DelaunayGNN(nn.Module):
+class DelaunayGNNModel(nn.Module):
     def __init__(
         self,
         in_dim: int,
@@ -19,43 +19,18 @@ class DelaunayGNN(nn.Module):
         edge_dim: int,
         global_pool: str = "max",
     ):
+        """
+        Delaunay GNN for ModelNet classification.
+        """
         super().__init__()
 
-        assert n_layers > 0
-        assert global_pool in ["mean", "max"]
-
-        layers = [
-            (
-                GATv2Conv(in_dim, hidden_dim, edge_dim=edge_dim),
-                "x, edge_index, edge_attr -> x",
-            ),
-            nn.ReLU(),
-            (BatchNorm(hidden_dim), "x -> x"),
-        ]
-
-        for _ in range(n_layers - 1):
-            layers += [
-                (
-                    GATv2Conv(
-                        hidden_dim, hidden_dim, edge_dim=edge_dim, share_weights=True
-                    ),
-                    "x, edge_index, edge_attr -> x",
-                ),
-                nn.ReLU(),
-                (BatchNorm(hidden_dim), "x -> x"),
-            ]
-
-        if global_pool == "mean":
-            layers.append((global_mean_pool, "x, batch -> x"))
-        else:
-            layers.append((global_max_pool, "x, batch -> x"))
-
-        self.gnn_layers = Sequential("x, edge_index, edge_attr, batch", layers)
+        # Graph convolutional layers
+        self.graphconv = GraphConvBlock(in_dim, hidden_dim, n_layers, edge_dim, global_pool)
 
         # Fully Connected Classifier
         self.classifier = FCClassifier(hidden_dim, out_dim)
 
     def forward(self, data: Data) -> torch.Tensor:
-        out = self.gnn_layers(data.x, data.edge_index, data.edge_attr, data.batch)
+        out = self.graphconv(data)
         out = self.classifier(out)
         return out
