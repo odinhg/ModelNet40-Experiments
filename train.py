@@ -28,9 +28,10 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 dataset_dict = load_dataset(dataset_filename)
 
 # Run experiments for all given combinations of hyper-parameters
-hyperparams = product(dataset_params["m"], dataset_params["k"], dataset_params["use_edge_density"])
 print(f"Running experiments for {model_name}")
-for m, k, use_edge_density in hyperparams: 
+for m, k, use_edge_density in product(*dataset_params): 
+    if (m, k, use_edge_density) in dataset_params_exclude:
+        continue
     print(f"Using parameters: m = {m}, k = {k}, use_edge_density = {use_edge_density}")
     
     torch.manual_seed(seed)
