@@ -3,7 +3,6 @@ import torch
 import numpy as np
 import random
 from tqdm import tqdm
-from itertools import product
 
 from experiments.delaunay_gnn.config import *
 
@@ -27,11 +26,9 @@ seed = 0
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 dataset_dict = load_dataset(dataset_filename)
 
-# Run experiments for all given combinations of hyper-parameters
+# Run experiments
 print(f"Running experiments for {model_name}")
-for m, k, use_edge_density in product(*dataset_params): 
-    if (m, k, use_edge_density) in dataset_params_exclude:
-        continue
+for m, k, use_edge_density in dataset_params: 
     print(f"Using parameters: m = {m}, k = {k}, use_edge_density = {use_edge_density}")
     
     torch.manual_seed(seed)
