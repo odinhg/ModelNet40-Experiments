@@ -109,7 +109,7 @@ def sample_set_of_sets(
     Sample m centroids using sample_method. For each centroid, uniformly sample k points from its Voronoi cell. Return tensor of shape (m, k, P.shape[-1]).
     """
     # Sample centroids
-    C_idx = subsample_indices(P, m, sample_method, replace)
+    C_idx = subsample_indices(P, m, sample_method)
     C = P[C_idx]
     # Compute distances from centroids to all points
     D = scipy.spatial.distance.cdist(C, P)
@@ -122,6 +122,7 @@ def sample_set_of_sets(
         sample = P[sample_idx]
         samples.append(sample)
 
+    samples = np.array(samples)
     x = torch.tensor(samples, dtype=torch.float)
 
     return x

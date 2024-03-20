@@ -29,7 +29,9 @@ dataset_params = [
 # Parameters for the model
 model_params = {
     "in_dim": 3,
-    "hidden_dim": 512,
+    "hidden_dim_1": 338,
+    "hidden_dim_2": 338,
     "out_dim": 40,
-    "n_layers": 2,
+    "n_layers_1": 3,
+    "n_layers_2": 3,
     }

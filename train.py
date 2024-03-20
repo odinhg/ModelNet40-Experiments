@@ -15,8 +15,10 @@ import experiments.global_config as global_config
 # Parse arguments and import experiment configuration
 parser = argparse.ArgumentParser(description="Run ModelNet40 experiments for a selected architecture.")
 parser.add_argument("experiment", help="name of experiment/architecture", choices=get_experiment_names())
+parser.add_argument('--nolog', help="disable logging to wandb", action='store_true')
 args = parser.parse_args()
 config = importlib.import_module(".config", f"experiments.{args.experiment}")
+use_wandb = not args.nolog
 
 # Load dataset
 dataset_dict = load_dataset(global_config.dataset_filename)
@@ -53,30 +55,31 @@ for m, k, use_edge_density in config.dataset_params:
         optimizer, milestones=list(range(20, global_config.epochs, 20)), gamma=0.5
     )
 
-    # Start wandb run
-    wandb.init(
-        project="ModelNet40-Experiments",
-        config={
-            "initial_learning_rate": config.lr,
-            "architecture": config.model_name,
-            "dataset": global_config.dataset_filename,
-            "epochs": global_config.epochs,
-            "m": m,
-            "k": k,
-            "use_edge_density": use_edge_density,
-            "val_size": global_config.val_size,
-            "batch_size": global_config.batch_size,
-            "validate_interval": global_config.validate_interval,
-            "validate_repeat": global_config.validate_repeat,
-            "train_transforms": ", ".join(
-                [transform.__name__ for transform in global_config.train_transforms]
-            ),
-            "val_transforms": ", ".join(
-                [transform.__name__ for transform in global_config.val_transforms]
-            ),
-            "#parameters": no_parameters,
-        },
-    )
+    if use_wandb:
+        # Start wandb run
+        wandb.init(
+            project="ModelNet40-Experiments",
+            config={
+                "initial_learning_rate": config.lr,
+                "architecture": config.model_name,
+                "dataset": global_config.dataset_filename,
+                "epochs": global_config.epochs,
+                "m": m,
+                "k": k,
+                "use_edge_density": use_edge_density,
+                "val_size": global_config.val_size,
+                "batch_size": global_config.batch_size,
+                "validate_interval": global_config.validate_interval,
+                "validate_repeat": global_config.validate_repeat,
+                "train_transforms": ", ".join(
+                    [transform.__name__ for transform in global_config.train_transforms]
+                ),
+                "val_transforms": ", ".join(
+                    [transform.__name__ for transform in global_config.val_transforms]
+                ),
+                "#parameters": no_parameters,
+            },
+        )
 
     for epoch in range(global_config.epochs):
         print(f"Epoch {epoch+1:03}/{global_config.epochs}")
@@ -102,9 +105,11 @@ for m, k, use_edge_density in config.dataset_params:
             pbar.set_description(
                 f"Mean train loss: {np.mean(train_losses):.4f} | Mean train accuracy: {np.mean(train_accuracies):.4f}"
             )
-            wandb.log({"train_loss": loss.item(), "train_acc": train_accuracy})
+            if use_wandb:
+                wandb.log({"train_loss": loss.item(), "train_acc": train_accuracy})
         scheduler.step()
-        wandb.log({"learning_rate": scheduler.get_last_lr()[0]})
+        if use_wandb:
+            wandb.log({"learning_rate": scheduler.get_last_lr()[0]})
 
         # Validation step
         if (epoch + 1) % global_config.validate_interval == 0:
@@ -130,12 +135,14 @@ for m, k, use_edge_density in config.dataset_params:
                 print(
                     f"Validation Accuracy: {np.mean(val_accuracies):.4f} (±{np.std(val_accuracies):.4f})"
                 )
-            wandb.log(
-                {
-                    "mean_val_acc": np.mean(val_accuracies),
-                    "min_val_acc": np.min(val_accuracies),
-                    "max_val_acc": np.max(val_accuracies),
-                }
-            )
+            if use_wandb:
+                wandb.log(
+                    {
+                        "mean_val_acc": np.mean(val_accuracies),
+                        "min_val_acc": np.min(val_accuracies),
+                        "max_val_acc": np.max(val_accuracies),
+                    }
+                )
             model.train()
-    wandb.finish()
+    if use_wandb:
+        wandb.finish()

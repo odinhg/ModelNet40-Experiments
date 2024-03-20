@@ -112,7 +112,16 @@ class Set2Vec(nn.Module):
 
         assert n_layers > 0
 
-        # TODO: build deep sets model here
-        # Firgure out how to handle PyG batching? Do we need to convert into dense batch?
-        # Remember to make the output invariant at the end by taking max.
+        layers = [PermEquivLayer(in_dim, out_dim), nn.Tanh()]
+
+        for _ in range(n_layers - 1):
+            layers += [PermEquivLayer(out_dim, out_dim), nn.Tanh()]
+
+        self.setnn_layers = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out = self.setnn_layers(x)
+        # Make output permutation invariant
+        out, _ = torch.max(out, dim=-2)
+        return out
 
