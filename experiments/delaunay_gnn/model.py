@@ -1,10 +1,6 @@
 import torch
 import torch.nn as nn
 from torch_geometric.data import Data
-from torch_geometric.nn import Sequential
-from torch_geometric.nn.conv import GATv2Conv
-from torch_geometric.nn.pool import global_mean_pool, global_max_pool
-from torch_geometric.nn.norm import BatchNorm
 
 from ..layers import GraphConvBlock, FCClassifier
 
@@ -18,6 +14,7 @@ class DelaunayGNNModel(nn.Module):
         n_layers: int,
         edge_dim: int,
         global_pool: str = "max",
+        **kwargs,
     ):
         """
         Delaunay GNN for ModelNet classification.

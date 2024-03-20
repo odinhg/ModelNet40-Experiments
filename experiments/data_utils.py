@@ -71,15 +71,6 @@ def compute_edge_density_feature(
     )
     edge_weight = edge_densities / edge_densities.max()
     return torch.tensor(edge_weight, dtype=torch.float)
-    # TODO: Find a better way to compute the edge density function
-    """
-    # Slower PyTorch solution using vmap
-    _, idx = torch.topk(D, k=2, dim=0, largest=False, sorted=False)
-    count_close_pts = torch.vmap(lambda e: torch.sum(torch.all(idx.T == e, dim=1)))
-    edge_densities = count_close_pts(edge_index.T)# + count_close_pts(edge_index.T.flip(0))
-    edge_weight = edge_densities / edge_densities.max()#D.shape[0]
-    return edge_weight
-    """
 
 
 def sample_weighted_delaunay_graph(
@@ -111,13 +102,37 @@ def sample_weighted_delaunay_graph(
     return x, edge_index, edge_attr
 
 
+def sample_set_of_sets(
+    P: np.ndarray, m: int, k: int, sample_method: str = "fps"
+) -> torch.Tensor:
+    """
+    Sample m centroids using sample_method. For each centroid, uniformly sample k points from its Voronoi cell. Return tensor of shape (m, k, P.shape[-1]).
+    """
+    # Sample centroids
+    C_idx = subsample_indices(P, m, sample_method, replace)
+    C = P[C_idx]
+    # Compute distances from centroids to all points
+    D = scipy.spatial.distance.cdist(C, P)
+    # Compute Voronoi cells
+    cell_idx = np.argmin(D, axis=0)
+    samples = []
+    for c in range(m):
+        voronoi_cell = P[cell_idx == c]
+        sample_idx = subsample_indices(voronoi_cell, k, method="uniform", replace=True)
+        sample = P[sample_idx]
+        samples.append(sample)
+
+    x = torch.tensor(samples, dtype=torch.float)
+
+    return x
+
+
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         point_clouds: np.ndarray,
         labels: np.ndarray,
         sample_method: str = "fps",
-        use_edge_density: bool = False,
         point_cloud_transforms: list[callable] | None = None,
     ):
         assert len(point_clouds) == len(
@@ -127,7 +142,6 @@ class BaseDataset(torch.utils.data.Dataset):
         self.y = labels
         self.length = len(self.y)
         self.sample_method = sample_method
-        self.use_edge_density = use_edge_density
         self.point_cloud_transforms = point_cloud_transforms
 
     def __len__(self) -> int:

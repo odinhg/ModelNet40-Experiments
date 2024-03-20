@@ -9,17 +9,6 @@ from torch_geometric.nn.pool import global_mean_pool, global_max_pool
 from torch_geometric.nn.norm import BatchNorm
 
 
-def subtract_max(x: torch.Tensor, batch: torch.Tensor) -> torch.Tensor:
-    """
-    Subtract maximum as done in DeepSets.
-    """
-    x_dense, mask = to_dense_batch(x, batch)
-    x_max, _ = torch.max(x_dense, dim=-2, keepdim=True)
-    x_dense = x_dense - x_max
-    out = x_dense[mask]
-    return out
-
-
 class FCClassifier(nn.Module):
     def __init__(
         self,
@@ -95,13 +84,35 @@ class GraphConvBlock(nn.Module):
         return out
 
 
+class PermEquivLayer(nn.Module):
+    """
+    Permutation equivariant layer from DeepSets implementation.
+    """
+    def __init__(self, in_dim: int, out_dim: int):
+        super().__init__()
+        self.linear = Linear(in_dim, out_dim, weight_initializer="glorot")
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        xm, _ = torch.max(x, dim=-2, keepdim=True)
+        out = self.linear(x - xm)
+        return out
+
+
 class Set2Vec(nn.Module):
     def __init__(
         self,
+        in_dim: int,
+        out_dim: int,
+        n_layers: int,
     ):
         """
         Set neural network as in DeepSets. Used by Set-of-Sets and Graph-of-Sets models.
         """
         super().__init__()
-        # TODO: Re-implement PermiEqui max from DeepSets. Use subtract_max function.
-        pass
+
+        assert n_layers > 0
+
+        # TODO: build deep sets model here
+        # Firgure out how to handle PyG batching? Do we need to convert into dense batch?
+        # Remember to make the output invariant at the end by taking max.
+

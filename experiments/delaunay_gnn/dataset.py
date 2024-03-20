@@ -13,10 +13,10 @@ class DelaunayGNNDataset(BaseDataset):
         point_clouds: np.ndarray,
         labels: np.ndarray,
         m: int,
-        k: int = 0,
         use_edge_density: bool = False,
         sample_method: str = "fps",
         point_cloud_transforms: list[callable] | None = None,
+        **kwargs,
     ):
         """
         ModelNet classification dataset for Delaunay GNN.
@@ -25,10 +25,10 @@ class DelaunayGNNDataset(BaseDataset):
             point_clouds,
             labels,
             sample_method,
-            use_edge_density,
             point_cloud_transforms,
         )
         self.m = m
+        self.use_edge_density = use_edge_density
 
     def __getitem__(self, index: int) -> Data:
         P = self.X[index]
