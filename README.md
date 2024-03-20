@@ -1,7 +1,5 @@
 # ModelNet40 Experiments 
 
-Learning on point cloud data using set and graph neural networks.
-
 ## TODO
 
 ### Implement
@@ -19,7 +17,7 @@ Learning on point cloud data using set and graph neural networks.
 
 Run experiments with $m\in\{8, 16, 32, 64, 128\}$, $k\in\{\frac{1024}{m}, \frac{2048}{m}, \frac{4096}{m}\}$ and both with and without the edge density feature (where applicable).
 
-All runs are logged to the following [wandb project](https://wandb.ai/graphofgraphs/ModelNet40-Experiments).
+---
 
 ## Constructing graphs and sets
 
@@ -68,6 +66,8 @@ $$
 
 The edge density value is higher for pair of points having many points as their closest neighbours.
 
+---
+
 ## Dataset instructions
 
 We use the same dataset format (HDF5) as in the [original DeepSets implementation](https://github.com/manzilzaheer/DeepSets/tree/master/PointClouds#data).
@@ -98,3 +98,35 @@ then running
 python generate_dataset.py data/ModelNet40 data 10000
 ``` 
 will save the HDF5 dataset consisting of point clouds with 10000 uniformly sampled points each to the file `data/ModelNet40_cloud.h5`.
+
+---
+
+## Configurations
+
+### Global configuration
+
+Global settings which are common for all experiments are found in the file `experiments/global_config.py`.
+
+### Experiment configurations
+
+Each experiment/model architecture have its own directory under `experiments/`.
+
+An experiment is defined by three files: 
+
+- `model.py`: contains the class defining the model,
+- `dataset.py`: contains the custom dataset class, and
+- `config.py`: contains setting specific for the experiment such as hyper-parameters.
+
+To define a new experiment, have a look at one of the existing ones.
+
+Code related to data such as pre-processing, sampling, graph construction and similar should be put in `experiments/data_utils.py`. PyTorch layers and similar should be put in `experiments/layers.py`. 
+
+---
+
+## Running experiments
+
+To run an experiment, run `python train.py <experiment name>`. By default, this will save statistics about the experiment to Weights & Biases. To run an experiment without logging, simply run `train.py` with the flag `--nolog`.
+
+All runs are logged to the following [wandb project](https://wandb.ai/graphofgraphs/ModelNet40-Experiments).
+
+---
