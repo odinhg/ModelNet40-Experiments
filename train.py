@@ -2,94 +2,89 @@ import wandb
 import torch
 import numpy as np
 import random
+import argparse
+import importlib
 from tqdm import tqdm
 
-from experiments.delaunay_gnn.config import *
-
 from utils.data import load_dataset, create_dataloaders
-from utils.misc import get_number_of_parameters
-from utils.transforms import random_rotate_and_scale, normalize
+from utils.misc import get_number_of_parameters, set_random_seeds, get_experiment_names
 
+# Import global configuration common for all experiments
+import experiments.global_config as global_config
 
-# Global settings (applies to all experiments)
-dataset_filename = "data/ModelNet40_cloud.h5"
-val_size = 0.10
-train_transforms = [random_rotate_and_scale, normalize]
-val_transforms = [normalize]
-validate_interval = 10
-validate_repeat = 5
-lr = 1e-3
-batch_size = 16
-epochs = 100
-num_workers = 8
-seed = 0
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
-dataset_dict = load_dataset(dataset_filename)
+# Parse arguments and import experiment configuration
+parser = argparse.ArgumentParser(description="Run ModelNet40 experiments for a selected architecture.")
+parser.add_argument("experiment", help="name of experiment/architecture", choices=get_experiment_names())
+args = parser.parse_args()
+config = importlib.import_module(".config", f"experiments.{args.experiment}")
+
+# Load dataset
+dataset_dict = load_dataset(global_config.dataset_filename)
 
 # Run experiments
-print(f"Running experiments for {model_name}")
-for m, k, use_edge_density in dataset_params: 
+print(f"Running experiments for {config.model_name}")
+for m, k, use_edge_density in config.dataset_params:
     print(f"Using parameters: m = {m}, k = {k}, use_edge_density = {use_edge_density}")
-    
-    torch.manual_seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
+
+    set_random_seeds(global_config.seed)
 
     train_dl, val_dl = create_dataloaders(
         data=dataset_dict,
-        dataset_constructor=dataset_constructor,
-        val_size=val_size,
+        dataset_constructor=config.dataset_constructor,
+        val_size=global_config.val_size,
         m=m,
         k=k,
         use_edge_density=use_edge_density,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        train_transforms=train_transforms,
-        val_transforms=val_transforms,
-        random_state=seed,
+        batch_size=global_config.batch_size,
+        num_workers=global_config.num_workers,
+        train_transforms=global_config.train_transforms,
+        val_transforms=global_config.val_transforms,
+        random_state=global_config.seed,
     )
 
-    model = model_constructor(**model_params, edge_dim=2 if use_edge_density else 1).to(
-        device
-    )
-    print(f"# Trainable params: {get_number_of_parameters(model)}")
+    model = config.model_constructor(
+        **config.model_params, edge_dim=2 if use_edge_density else 1
+    ).to(global_config.device)
+    no_parameters = get_number_of_parameters(model)
+    print(f"# Trainable params: {no_parameters}")
     loss_function = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=list(range(20, epochs, 20)), gamma=0.5
+        optimizer, milestones=list(range(20, global_config.epochs, 20)), gamma=0.5
     )
 
     # Start wandb run
     wandb.init(
         project="ModelNet40-Experiments",
         config={
-            "initial_learning_rate": lr,
-            "architecture": model_name,
-            "dataset": dataset_filename,
-            "epochs": epochs,
+            "initial_learning_rate": config.lr,
+            "architecture": config.model_name,
+            "dataset": global_config.dataset_filename,
+            "epochs": global_config.epochs,
             "m": m,
             "k": k,
             "use_edge_density": use_edge_density,
-            "val_size": val_size,
-            "batch_size": batch_size,
-            "validate_interval": validate_interval,
-            "validate_repeat": validate_repeat,
+            "val_size": global_config.val_size,
+            "batch_size": global_config.batch_size,
+            "validate_interval": global_config.validate_interval,
+            "validate_repeat": global_config.validate_repeat,
             "train_transforms": ", ".join(
-                [transform.__name__ for transform in train_transforms]
+                [transform.__name__ for transform in global_config.train_transforms]
             ),
             "val_transforms": ", ".join(
-                [transform.__name__ for transform in val_transforms]
+                [transform.__name__ for transform in global_config.val_transforms]
             ),
+            "#parameters": no_parameters,
         },
     )
 
-    for epoch in range(epochs):
-        print(f"Epoch {epoch+1:03}/{epochs}")
+    for epoch in range(global_config.epochs):
+        print(f"Epoch {epoch+1:03}/{global_config.epochs}")
         model.train()
         train_accuracies = []
         train_losses = []
         for data in (pbar := tqdm(train_dl)):
-            data.to(device)
+            data.to(global_config.device)
             labels = data.y
             optimizer.zero_grad()
             logits = model(data)
@@ -112,15 +107,15 @@ for m, k, use_edge_density in dataset_params:
         wandb.log({"learning_rate": scheduler.get_last_lr()[0]})
 
         # Validation step
-        if (epoch + 1) % validate_interval == 0:
+        if (epoch + 1) % global_config.validate_interval == 0:
             model.eval()
             with torch.no_grad():
                 val_accuracies = []
-                for _ in range(validate_repeat):
+                for _ in range(global_config.validate_repeat):
                     total_correct = 0
                     total_count = 0
                     for data in tqdm(val_dl):
-                        data.to(device)
+                        data.to(global_config.device)
                         labels = data.y
                         logits = model(data)
                         correct = (

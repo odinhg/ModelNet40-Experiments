@@ -5,6 +5,7 @@ from .dataset import DelaunayGNNDataset
 model_name = "Delaunay GNN"
 model_constructor = DelaunayGNNModel
 dataset_constructor = DelaunayGNNDataset
+lr = 1e-3
 
 # Values to use for m, k, use_edge_density
 dataset_params = [

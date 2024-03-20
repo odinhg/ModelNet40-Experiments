@@ -5,19 +5,21 @@ Learning on point cloud data using set and graph neural networks.
 ## TODO
 
 ### Implement
-- [x] Edge density function (Would be nice to optimize)
+- [x] Edge density function (Would be nice to optimize later)
 - [x] Delaunay GNN (Using `GATv2Conv` layers)
 - [ ] Set of Sets
 - [ ] Graph of Sets
 - [ ] Graph of Graphs
 
 ### Run experiments for:
-- [ ] Delaunay GNN
+- [x] Delaunay GNN
 - [ ] Set of Sets
 - [ ] Graph of Sets
 - [ ] Graph of Graphs
 
-Run experiments with $m\in\{8, 16, 32, 64, 128\}$, $k\in\{\frac{1024}{m}, \frac{2048}{m}, \frac{4096}{m}\}$ and both with and without the edge density feature (where applicable). Results are added to the [following document](https://docs.google.com/spreadsheets/d/1OzJbgeIN__HjD_G7s68ooIhPvgB9MsWIcwAFCDZRGAc/edit?usp=sharing).
+Run experiments with $m\in\{8, 16, 32, 64, 128\}$, $k\in\{\frac{1024}{m}, \frac{2048}{m}, \frac{4096}{m}\}$ and both with and without the edge density feature (where applicable).
+
+All runs are logged to the following [wandb project](https://wandb.ai/graphofgraphs/ModelNet40-Experiments).
 
 ## Constructing graphs and sets
 

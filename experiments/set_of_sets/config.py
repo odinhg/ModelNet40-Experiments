@@ -5,6 +5,7 @@ from .dataset import SetOfSetsDataset
 model_name = "Set of Sets"
 model_constructor = SetOfSetsModel 
 dataset_constructor = SetOfSetsDataset 
+lr = 1e-3
 
 # Values to use for m, k, use_edge_density
 dataset_params = [
