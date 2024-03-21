@@ -70,7 +70,28 @@ def compute_edge_density_feature(
         ]
     )
     edge_weight = edge_densities / edge_densities.max()
-    return torch.tensor(edge_weight, dtype=torch.float)
+    edge_weight = torch.tensor(edge_weight, dtype=torch.float)
+    return edge_weight 
+
+def sample_centroids(P: np.ndarray, m: int, sample_method: str="fps", replace: bool=False) -> tuple[np.ndarray]:
+    # Sample centroids
+    C_idx = subsample_indices(P, m, sample_method, replace)
+    C = P[C_idx]
+    return C, C_idx
+
+
+def build_edge_features(D: np.ndarray, C_idx: np.ndarray, edge_index: torch.Tensor, use_edge_density: bool) -> torch.Tensor:
+    """
+    If use_edge_density is true, then D should be the distance matrix from C to P. Otherwise, D should be the pairwise distances in C. 
+    """
+    if use_edge_density:
+        edge_distance_feature = compute_distance_feature(D[:, C_idx], edge_index)
+        edge_density_feature = compute_edge_density_feature(D, edge_index)
+        edge_attr = torch.stack([edge_distance_feature, edge_density_feature], dim=-1)
+    else:
+        edge_distance_feature = compute_distance_feature(D, edge_index)
+        edge_attr = edge_distance_feature.unsqueeze(-1)
+    return edge_attr
 
 
 def sample_weighted_delaunay_graph(
@@ -83,49 +104,48 @@ def sample_weighted_delaunay_graph(
     """
     Sample m points from P using farthest point sampling. Return node features (coordinates), edge index for the Delaunay graph, and distance and edge density edge features.
     """
-    # Sample centroids
-    C_idx = subsample_indices(P, m, sample_method, replace)
-    C = P[C_idx]
-    # Compute distances from centroids to all points
-    D = scipy.spatial.distance.cdist(C, P)
-    edge_index = build_delaunay_graph(C)
-
-    edge_distance_feature = compute_distance_feature(D[:, C_idx], edge_index)
-    if use_edge_density:
-        edge_density_feature = compute_edge_density_feature(D, edge_index)
-        edge_attr = torch.stack([edge_distance_feature, edge_density_feature], dim=-1)
-    else:
-        edge_attr = edge_distance_feature.unsqueeze(-1)
-
+    C, C_idx = sample_centroids(P, m, sample_method, replace)
     x = torch.tensor(C, dtype=torch.float)
-
+    edge_index = build_delaunay_graph(C)
+    if use_edge_density:
+        D = scipy.spatial.distance.cdist(C, P)
+    else:
+        D = scipy.spatial.distance.cdist(C, C)
+    edge_attr = build_edge_features(D, C_idx, edge_index, use_edge_density)
     return x, edge_index, edge_attr
+
+
+def sample_from_voronoi_cells(P: np.ndarray, D: np.ndarray, k: int) -> torch.Tensor:
+    """
+    Sample k points from P in each Voronoi cell corresponding to the centroids in C. Here, D is the distance matrix from C to P.
+    """
+    cell_idx = np.argmin(D, axis=0)
+    samples = []
+    for c in range(D.shape[0]):
+        voronoi_cell = P[cell_idx == c]
+        sample_idx = subsample_indices(voronoi_cell, k, method="uniform", replace=True)
+        sample = P[sample_idx]
+        samples.append(sample)
+    x = torch.tensor(np.array(samples), dtype=torch.float)
+    return x
 
 
 def sample_set_of_sets(
     P: np.ndarray, m: int, k: int, sample_method: str = "fps"
 ) -> torch.Tensor:
-    """
-    Sample m centroids using sample_method. For each centroid, uniformly sample k points from its Voronoi cell. Return tensor of shape (m, k, P.shape[-1]).
-    """
-    # Sample centroids
-    C_idx = subsample_indices(P, m, sample_method)
-    C = P[C_idx]
-    # Compute distances from centroids to all points
+    C, _ = sample_centroids(P, m, sample_method)
     D = scipy.spatial.distance.cdist(C, P)
-    # Compute Voronoi cells
-    cell_idx = np.argmin(D, axis=0)
-    samples = []
-    for c in range(m):
-        voronoi_cell = P[cell_idx == c]
-        sample_idx = subsample_indices(voronoi_cell, k, method="uniform", replace=True)
-        sample = P[sample_idx]
-        samples.append(sample)
-
-    samples = np.array(samples)
-    x = torch.tensor(samples, dtype=torch.float)
-
+    x = sample_from_voronoi_cells(P, D, k)
     return x
+
+
+def sample_graph_of_sets(P: np.ndarray, m: int, k: int, use_edge_density: bool, sample_method: str="fps") -> tuple[torch.Tensor]:
+    C, C_idx = sample_centroids(P, m, sample_method)
+    D = scipy.spatial.distance.cdist(C, P)
+    x = sample_from_voronoi_cells(P, D, k)
+    edge_index = build_delaunay_graph(C)
+    edge_attr = build_edge_features(D, C_idx, edge_index, use_edge_density)
+    return x, edge_index, edge_attr
 
 
 class BaseDataset(torch.utils.data.Dataset):

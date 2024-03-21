@@ -17,11 +17,11 @@ class SetOfSetsModel(nn.Module):
         **kwargs,
     ):
         """
-        Delaunay GNN for ModelNet classification.
+        Set of Sets for ModelNet classification.
         """
         super().__init__()
 
-        # Graph convolutional layers
+        # Set embedding layers
         self.setnn_1 = Set2Vec(in_dim, hidden_dim_1, n_layers_1)
         self.setnn_2 = Set2Vec(hidden_dim_1, hidden_dim_2, n_layers_2)
 
