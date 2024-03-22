@@ -27,13 +27,15 @@ class GraphOfSetsModel(nn.Module):
         self.setnn = Set2Vec(in_dim, hidden_dim_1, n_layers_1)
 
         # Graph convolutional layer
-        self.graphconv = GraphConvBlock(hidden_dim_1, hidden_dim_2, n_layers_2, edge_dim, global_pool)
+        self.graphconv = GraphConvBlock(hidden_dim_1 + 3, hidden_dim_2, n_layers_2, edge_dim, global_pool)
 
         # Fully Connected Classifier
         self.classifier = FCClassifier(hidden_dim_2, out_dim)
 
     def forward(self, data: Data) -> torch.Tensor:
-        data.x = self.setnn(data.x)
+        node_embeddings = self.setnn(data.x)
+        # Add centroid coordinates to node features
+        data.x = torch.cat((node_embeddings, data.pos), dim=-1)
         out = self.graphconv(data)
         out = self.classifier(out)
         return out

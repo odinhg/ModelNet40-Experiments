@@ -36,7 +36,7 @@ class GraphOfSetsDataset(BaseDataset):
         P = self.X[index]
         P = self.apply_transforms(P)
         y = torch.tensor(self.y[index], dtype=torch.long)
-        x, edge_index, edge_attr = sample_graph_of_sets(P, self.m, self.k, self.use_edge_density, self.sample_method)
-        data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, num_nodes=self.m)
+        x, edge_index, edge_attr, pos = sample_graph_of_sets(P, self.m, self.k, self.use_edge_density, self.sample_method)
+        data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, num_nodes=self.m, pos=pos)
         return data
 

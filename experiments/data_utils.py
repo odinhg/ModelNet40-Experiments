@@ -49,8 +49,10 @@ def compute_distance_feature(
     """
     source_idx, target_idx = edge_index
     edge_distances = D[source_idx, target_idx]
-    edge_weight = 1 / (edge_distances + 1) ** p
-    return torch.tensor(edge_weight, dtype=torch.float)
+    inv_distances = 1 / (edge_distances + 1) ** p
+    edge_weight = inv_distances / inv_distances.max()
+    edge_weight = torch.tensor(edge_weight, dtype=torch.float)
+    return edge_weight
 
 
 def compute_edge_density_feature(
@@ -107,11 +109,17 @@ def sample_weighted_delaunay_graph(
     C, C_idx = sample_centroids(P, m, sample_method, replace)
     x = torch.tensor(C, dtype=torch.float)
     edge_index = build_delaunay_graph(C)
+
     if use_edge_density:
         D = scipy.spatial.distance.cdist(C, P)
+        edge_distance_feature = compute_distance_feature(D[:, C_idx], edge_index)
+        edge_density_feature = compute_edge_density_feature(D, edge_index)
+        edge_attr = torch.stack([edge_distance_feature, edge_density_feature], dim=-1)
     else:
         D = scipy.spatial.distance.cdist(C, C)
-    edge_attr = build_edge_features(D, C_idx, edge_index, use_edge_density)
+        edge_distance_feature = compute_distance_feature(D, edge_index)
+        edge_attr = edge_distance_feature.unsqueeze(-1)
+    
     return x, edge_index, edge_attr
 
 
@@ -141,11 +149,21 @@ def sample_set_of_sets(
 
 def sample_graph_of_sets(P: np.ndarray, m: int, k: int, use_edge_density: bool, sample_method: str="fps") -> tuple[torch.Tensor]:
     C, C_idx = sample_centroids(P, m, sample_method)
+    pos = torch.tensor(C, dtype=torch.float)
+    edge_index = build_delaunay_graph(C)
+
     D = scipy.spatial.distance.cdist(C, P)
     x = sample_from_voronoi_cells(P, D, k)
-    edge_index = build_delaunay_graph(C)
-    edge_attr = build_edge_features(D, C_idx, edge_index, use_edge_density)
-    return x, edge_index, edge_attr
+
+    if use_edge_density:
+        edge_distance_feature = compute_distance_feature(D[:, C_idx], edge_index)
+        edge_density_feature = compute_edge_density_feature(D, edge_index)
+        edge_attr = torch.stack([edge_distance_feature, edge_density_feature], dim=-1)
+    else:
+        edge_distance_feature = compute_distance_feature(D[:, C_idx], edge_index)
+        edge_attr = edge_distance_feature.unsqueeze(-1)
+
+    return x, edge_index, edge_attr, pos
 
 
 class BaseDataset(torch.utils.data.Dataset):
