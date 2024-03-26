@@ -5,6 +5,7 @@ import numpy as np
 import scipy.spatial
 from torch_geometric.utils import coalesce, to_undirected
 from torch_geometric.data import Data
+from typing import Any
 
 
 def subsample_indices(
@@ -165,6 +166,66 @@ def sample_graph_of_sets(P: np.ndarray, m: int, k: int, use_edge_density: bool, 
 
     return x, edge_index, edge_attr, pos
 
+def sample_graph_of_graphs(P: np.ndarray, m: int, k: int, use_edge_density: bool, sample_method: str="fps") -> tuple[torch.Tensor]:
+    """
+    1. Sample m centroids C using sample_method
+    2. For each centroid c (index i):
+        1. Uniformly sample k points from the Voronoi cell of c -> S : (k, 3)
+        2. Construct the Delaunay graph on S together with edge feature(s)
+        3. Add S to x, Add edges to edge_index, Add features to edge_attr
+            - Need to add k*i to edge_index
+    4. Reshape x (m, k, 3) -> (m*k, 3)
+    5. Construct global Delaunay graph on C with edge feature(s)
+    6. Return x, edge_index, edge_attr, global_edge_index, global_edge_attr, pos
+    """
+    C, C_idx = sample_centroids(P, m, sample_method)
+    pos = torch.tensor(C, dtype=torch.float)
+    # Construct global graph
+    global_edge_index = build_delaunay_graph(C)
+    D = scipy.spatial.distance.cdist(C, P)
+    if use_edge_density:
+        edge_distance_feature = compute_distance_feature(D[:, C_idx], global_edge_index)
+        edge_density_feature = compute_edge_density_feature(D, global_edge_index)
+        global_edge_attr = torch.stack([edge_distance_feature, edge_density_feature], dim=-1)
+    else:
+        edge_distance_feature = compute_distance_feature(D[:, C_idx], global_edge_index)
+        global_edge_attr = edge_distance_feature.unsqueeze(-1)
+
+    # Construct local graphs
+    cell_idx = np.argmin(D, axis=0)
+    local_samples = []
+    local_edge_indices = []
+    local_edge_attrs = []
+    for c in range(D.shape[0]):
+        voronoi_cell = P[cell_idx == c]
+        n = voronoi_cell.shape[0]
+        if n < k:
+            # Duplicate and perturb points
+            diff = k - n
+            idx = np.random.choice(n, diff, replace=True)
+            new_pts = voronoi_cell[idx]
+            noise = np.random.standard_normal(new_pts.shape)
+            new_pts += noise
+            voronoi_cell =  np.r_[voronoi_cell, new_pts]
+
+        S_idx = subsample_indices(voronoi_cell, k, method="uniform", replace=False)
+        S = P[S_idx]
+        local_edge_index = build_delaunay_graph(S)
+
+        D_local = scipy.spatial.distance.cdist(S, S)
+        edge_distance_feature = compute_distance_feature(D_local, local_edge_index)
+        local_edge_attr = edge_distance_feature.unsqueeze(-1)
+
+        local_samples.append(S)
+        local_edge_indices.append(local_edge_index + c * k) # Shift indices to create one big disconnected graph
+        local_edge_attrs.append(local_edge_attr)
+    
+    x = torch.tensor(np.array(local_samples), dtype=torch.float).flatten(0, 1) 
+    edge_index = torch.cat(local_edge_indices, dim=-1)
+    edge_attr = torch.cat(local_edge_attrs, dim=0)
+
+    return x, edge_index, edge_attr, global_edge_index, global_edge_attr, pos
+
 
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(
@@ -194,3 +255,20 @@ class BaseDataset(torch.utils.data.Dataset):
             for transform in self.point_cloud_transforms:
                 P = transform(P)
         return P
+
+
+class GOGData(Data):
+    """
+    Overwrite __inc__ to ensure correct batching behaviour when we have graph of graphs data.
+    """
+    def __inc__(self, key:str, value: Any, *args, **kwargs) -> Any:
+        if key == "global_edge_index":
+            return self.pos.size(0)
+        return super().__inc__(key, value, *args, **kwargs)
+
+def generate_batch_tensor(m: int, batch_size: int):
+    return torch.tensor([[i]*m for i in range(batch_size)], dtype=torch.long).flatten()
+
+def complete_graph_edge_index(n: int):
+    return torch.tensor([[i, j] for i in range(n) for j in range(n) if j != i], dtype=torch.long).T
+

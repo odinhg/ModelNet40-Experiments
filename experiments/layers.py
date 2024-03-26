@@ -51,7 +51,6 @@ class GraphConvBlock(nn.Module):
         super().__init__()
 
         assert n_layers > 0
-        assert global_pool in ["mean", "max"]
 
         layers = [
             (
@@ -74,7 +73,7 @@ class GraphConvBlock(nn.Module):
 
         if global_pool == "mean":
             layers.append((global_mean_pool, "x, batch -> x"))
-        else:
+        elif global_pool == "max":
             layers.append((global_max_pool, "x, batch -> x"))
 
         self.gnn_layers = Sequential("x, edge_index, edge_attr, batch", layers)
