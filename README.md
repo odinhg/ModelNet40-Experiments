@@ -5,14 +5,14 @@
 ### Implement
 - [x] Edge density function (Would be nice to optimize later)
 - [x] Delaunay GNN (Using `GATv2Conv` layers)
-- [ ] Set of Sets
-- [ ] Graph of Sets
-- [ ] Graph of Graphs
+- [x] Set of Sets
+- [x] Graph of Sets
+- [x] Graph of Graphs
 
 ### Run experiments for:
 - [x] Delaunay GNN
-- [ ] Set of Sets
-- [ ] Graph of Sets
+- [x] Set of Sets
+- [x] Graph of Sets
 - [ ] Graph of Graphs
 
 Run experiments with $m\in\{8, 16, 32, 64, 128\}$, $k\in\{\frac{1024}{m}, \frac{2048}{m}, \frac{4096}{m}\}$ and both with and without the edge density feature (where applicable).
@@ -43,11 +43,11 @@ Here, we do the same as for Graph of Sets, but we also include the Delaunay grap
 
 ## Edge features
 
-We include (up to) two edge features to be used for the graphs constructed.
+We include (up to) two edge features described below. Both features are normalized by dividing by the maximum feature value graph-wise.
 
 ### Distance feature
 
-Given $p>0$, a point cloud $P$ and two points $c_1, c_2 \in C\subseteq P$, we consider the value $\frac{1}{(d(c_1, c_2)+1)^p}\in[0,1]$ as an edge feature.
+Given $p>0$, a point cloud $P$ and two points $c_1, c_2 \in C\subseteq P$, we consider the value $\frac{1}{(d(c_1, c_2)+1)^p}\in[0,1]$ as an edge feature. In experiments, we used $p=2$. 
 
 ### Edge density function
 

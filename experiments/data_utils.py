@@ -166,21 +166,19 @@ def sample_graph_of_sets(P: np.ndarray, m: int, k: int, use_edge_density: bool, 
 
     return x, edge_index, edge_attr, pos
 
+def duplicate_and_perturb(P: np.ndarray, d: int, var: float=0.01) -> np.ndarray:
+    """
+    Uniformly sample d points form P, perturb them by adding noise and return P with the perturbed points added.
+    """
+    noise = np.random.normal(0, var, size=(d, P.shape[1]))
+    idx = np.random.choice(P.shape[0], d, replace=True)
+    P_new = P[idx] + noise
+    return np.r_[P, P_new]
+
 def sample_graph_of_graphs(P: np.ndarray, m: int, k: int, use_edge_density: bool, sample_method: str="fps") -> tuple[torch.Tensor]:
-    """
-    1. Sample m centroids C using sample_method
-    2. For each centroid c (index i):
-        1. Uniformly sample k points from the Voronoi cell of c -> S : (k, 3)
-        2. Construct the Delaunay graph on S together with edge feature(s)
-        3. Add S to x, Add edges to edge_index, Add features to edge_attr
-            - Need to add k*i to edge_index
-    4. Reshape x (m, k, 3) -> (m*k, 3)
-    5. Construct global Delaunay graph on C with edge feature(s)
-    6. Return x, edge_index, edge_attr, global_edge_index, global_edge_attr, pos
-    """
+    # Construct global graph
     C, C_idx = sample_centroids(P, m, sample_method)
     pos = torch.tensor(C, dtype=torch.float)
-    # Construct global graph
     global_edge_index = build_delaunay_graph(C)
     D = scipy.spatial.distance.cdist(C, P)
     if use_edge_density:
@@ -191,7 +189,7 @@ def sample_graph_of_graphs(P: np.ndarray, m: int, k: int, use_edge_density: bool
         edge_distance_feature = compute_distance_feature(D[:, C_idx], global_edge_index)
         global_edge_attr = edge_distance_feature.unsqueeze(-1)
 
-    # Construct local graphs
+    # Construct local graphs as one bigger disconnected graph
     cell_idx = np.argmin(D, axis=0)
     local_samples = []
     local_edge_indices = []
@@ -199,19 +197,14 @@ def sample_graph_of_graphs(P: np.ndarray, m: int, k: int, use_edge_density: bool
     for c in range(D.shape[0]):
         voronoi_cell = P[cell_idx == c]
         n = voronoi_cell.shape[0]
-        if n < k:
-            # Duplicate and perturb points
-            diff = k - n
-            idx = np.random.choice(n, diff, replace=True)
-            new_pts = voronoi_cell[idx]
-            noise = np.random.standard_normal(new_pts.shape)
-            new_pts += noise
-            voronoi_cell =  np.r_[voronoi_cell, new_pts]
+        diff = k - n
+        if diff > 0: # Too few points in Voronoi cell, add difference
+            voronoi_cell = duplicate_and_perturb(voronoi_cell, diff)
 
         S_idx = subsample_indices(voronoi_cell, k, method="uniform", replace=False)
         S = P[S_idx]
         local_edge_index = build_delaunay_graph(S)
-
+        # Only use distance feature locally due to computational cost
         D_local = scipy.spatial.distance.cdist(S, S)
         edge_distance_feature = compute_distance_feature(D_local, local_edge_index)
         local_edge_attr = edge_distance_feature.unsqueeze(-1)
