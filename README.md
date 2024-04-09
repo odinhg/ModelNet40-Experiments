@@ -8,12 +8,17 @@
 - [x] Set of Sets
 - [x] Graph of Sets
 - [x] Graph of Graphs
+- [x] DeepSets
+- [x] DeepSets FPS (farthest point sampling to check difference in performance on small input point clouds)
+- [ ] Multiple FPS DeepSets followed by graph convolutional layers.
 
 ### Run experiments for:
 - [x] Delaunay GNN
 - [x] Set of Sets
 - [x] Graph of Sets
-- [ ] Graph of Graphs
+- [x] Graph of Graphs
+- [x] DeepSets
+- [x] DeepSets FPS
 
 Run experiments with $m\in\{8, 16, 32, 64, 128\}$, $k\in\{\frac{1024}{m}, \frac{2048}{m}, \frac{4096}{m}\}$ and both with and without the edge density feature (where applicable).
 

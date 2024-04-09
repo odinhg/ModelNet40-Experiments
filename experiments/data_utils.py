@@ -166,6 +166,43 @@ def sample_graph_of_sets(P: np.ndarray, m: int, k: int, use_edge_density: bool, 
 
     return x, edge_index, edge_attr, pos
 
+def hausdorff_distance(A: np.ndarray, B: np.ndarray, directed: bool, dim: int) -> float:
+    """
+    Note: A and B are of shape (k * dim) where k is the point cloud size and dim is the dimension of each point.
+    """
+    A, B = A.reshape(-1, dim), B.reshape(-1, dim)
+    D = scipy.spatial.distance.cdist(A, B)
+    if directed:
+        return D.min(axis=1).max()
+    return max(D.min(axis=1).max(), D.min(axis=0).max())
+
+def hausdorff_cdist(X: np.ndarray, Y: np.ndarray, directed: bool=False) -> np.ndarray:
+    """
+    Input X and Y of shape (m, k, d) both arrays of point clouds. Returns Hausdorff distance matrix [d_H(X[i], Y[j])]
+    """
+    dim = X.shape[-1]
+    X, Y = X.reshape(X.shape[0], -1), Y.reshape(Y.shape[0], -1)
+    D = scipy.spatial.distance.cdist(X, Y, metric=hausdorff_distance, directed=directed, dim=dim)
+    return D
+
+from time import time
+def sample_global_graph_of_sets(P: np.ndarray, m: int, k: int) -> tuple[torch.Tensor]:
+    P = np.float32(P)
+    edge_index = complete_graph_edge_index(m)
+
+    S_idx = subsample_indices(P, m * k, "uniform")
+    S = torch.tensor(P[S_idx], dtype=torch.float).view(m, k, -1)
+
+    #S = [P[subsample_indices(P, k, "uniform")] for _ in range(m)]
+    #S = torch.tensor(np.array(S), dtype=torch.float)
+    #D = hausdorff_cdist(S, S)
+    #edge_distance_feature = compute_distance_feature(D, edge_index)
+    #edge_attr = edge_distance_feature.unsqueeze(-1)
+    
+    edge_attr = torch.tensor([1.0] * edge_index.shape[-1], dtype=torch.float)
+    return S, edge_index, edge_attr
+
+
 def duplicate_and_perturb(P: np.ndarray, d: int, var: float=0.01) -> np.ndarray:
     """
     Uniformly sample d points form P, perturb them by adding noise and return P with the perturbed points added.
